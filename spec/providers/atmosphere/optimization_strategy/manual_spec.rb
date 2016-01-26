@@ -88,4 +88,46 @@ describe Atmosphere::OptimizationStrategy::Manual do
     expect(vm_candidates.count).to eq 1
     expect(vm_candidates.first.tenants.first).to eq t
   end
+
+  context 'appliance optimization policy params is nil' do
+    it 'does not fail' do
+      appl = build(:appliance, optimization_policy_params: nil)
+      manual_strategy = Atmosphere::OptimizationStrategy::Manual.new(appl)
+      manual_strategy.new_vms_tmpls_and_flavors_and_tenants
+    end
+
+    it 'returns empty array' do
+      appl = build(:appliance, optimization_policy_params: nil)
+      manual_strategy = Atmosphere::OptimizationStrategy::Manual.new(appl)
+      expect(manual_strategy.new_vms_tmpls_and_flavors_and_tenants).to be_empty
+    end
+  end
+  context 'vms parameter is nil' do
+    it 'does not fail' do
+      appl = build(:appliance, optimization_policy_params: { vms: nil })
+      manual_strategy = Atmosphere::OptimizationStrategy::Manual.new(appl)
+      manual_strategy.new_vms_tmpls_and_flavors_and_tenants
+    end
+
+    it 'returns empty array' do
+      appl = build(:appliance, optimization_policy_params: { vms: nil })
+      manual_strategy = Atmosphere::OptimizationStrategy::Manual.new(appl)
+      expect(manual_strategy.new_vms_tmpls_and_flavors_and_tenants).to be_empty
+    end
+  end
+
+  it 'does not support dev mode appliance set' do
+    as = build(:dev_appliance_set)
+    expect(Atmosphere::OptimizationStrategy::Manual.supports?(as)).to be_falsy
+  end
+
+  it 'supports portal appliance set' do
+    as = build(:portal_appliance_set)
+    expect(Atmosphere::OptimizationStrategy::Manual.supports?(as)).to be_truthy
+  end
+
+  it 'supports workflow appliance set' do
+    as = build(:workflow_appliance_set)
+    expect(Atmosphere::OptimizationStrategy::Manual.supports?(as)).to be_truthy
+  end
 end

@@ -2,9 +2,9 @@
 
 # Atmosphere API
 
-All API requests require authentication (if not stated different). You need to pass a `private_token` or `mi_ticket` parameter by url or header.
+All API requests require authentication (if not stated different). You need to pass a `private_token` parameter by url or header.
 
-If no, or an invalid, `private_token` or `mi_ticket` is provided then an error message will be returned with status code 401:
+If no, or an invalid, `private_token` is provided then an error message will be returned with status code 401:
 
 ```json
 {
@@ -17,15 +17,13 @@ API requests should be prefixed with `api` and the API version. Current API vers
 Example of a valid API request:
 
 ```
-GET http://example.com/api/v1/appliance_sets?private_token=FSGa2df2gSdfg
-GET http://example.com/api/v1/appliance_sets?mi_ticket=fd342hac4a=
+GET http://<your-api-provider>/api/v1/appliance_sets?private_token=FSGa2df2gSdfg
 ```
 
 Example for a valid API request using curl and authentication via header:
 
 ```
-curl --header "PRIVATE-TOKEN: QVy1PB7sTxfy4pqfZM1U" http://example.com/api/v1/appliance_sets
-curl --header "MI-TICKET: fd342hac4a=" https://example.com/api/v1/appliance_sets
+curl --header "PRIVATE-TOKEN: QVy1PB7sTxfy4pqfZM1U" http://<your-api-provider>/api/v1/appliance_sets
 ```
 
 ## Request content type
@@ -33,7 +31,7 @@ curl --header "MI-TICKET: fd342hac4a=" https://example.com/api/v1/appliance_sets
 When sending a JSON request body, a valid content type (`application/json`) must be specified, e.g.:
 
 ```
-curl -X POST --header "PRIVATE-TOKEN: QVy1PB7sTxfy4pqfZM1U" --header "Content-Type: application/json" http://example.com/api/v1/appliance_sets --data '{"name": 'as name', "appliance_set_type": "workflow"}'
+curl -X POST --header "PRIVATE-TOKEN: QVy1PB7sTxfy4pqfZM1U" --header "Content-Type: application/json" http://<your-api-provider>/api/v1/appliance_sets --data '{"name": 'as name', "appliance_set_type": "workflow"}'
 ```
 
 ## Status codes
@@ -105,13 +103,11 @@ duplicated user key
 If you are a system administrator, you can impersonate other users. To do so, simply add `sudo=other_user_name` query params or a `HTTP-SUDO` header to your request. Example:
 
 ```
-GET http://example.com/api/v1/appliance_sets?private_token=FSGa2df2gSdfg&sudo=other_user
-GET http://example.com/api/v1/appliance_sets?mi_ticket=fd342hac4a=&sudo=other_user
+GET http://<your-api-provider>/api/v1/appliance_sets?private_token=FSGa2df2gSdfg&sudo=other_user
 ```
 
 ```
-curl --header "PRIVATE-TOKEN: QVy1PB7sTxfy4pqfZM1U" --header "HTTP-SUDO: other_user" http://example.com/api/v1/appliance_sets
-curl --header "MI-TICKET: fd342hac4a=" --header "HTTP-SUDO: other_user" http://example.com/api/v1/appliance_sets
+curl --header "PRIVATE-TOKEN: QVy1PB7sTxfy4pqfZM1U" --header "HTTP-SUDO: other_user" http://<your-api-provider>/api/v1/appliance_sets
 ```
 
 ## JSON structure
@@ -133,7 +129,7 @@ All JSON messages (request - if needed - and responses for `GET`/`POST`/`PUT`/`D
     }
   ]
 }
-``` 
+```
 
 ### Single resource
 

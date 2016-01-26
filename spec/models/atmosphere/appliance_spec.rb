@@ -20,30 +20,61 @@ describe Atmosphere::Appliance do
   it { should have_one(:dev_mode_property_set).dependent(:destroy) }
   it { should have_readonly_attribute :dev_mode_property_set }
 
+  context 'optimization strategy validation' do
+    it 'is valid if optimization strategy supports as of given type' do
+      allow(Atmosphere::OptimizationStrategy::Default).
+        to receive(:supports?).and_return true
+      create(:appliance)
+    end
+    it 'raise an error if strategy does not support as of given type' do
+      allow(Atmosphere::OptimizationStrategy::Default).
+        to receive(:supports?).and_return false
+      expect { create(:appliance) }.to raise_error(ActiveRecord::RecordInvalid)
+    end
+  end
+
   context 'optimization strategy' do
     it 'default is used when optimization policy is not set' do
       expect(Atmosphere::Appliance.new.optimization_strategy.class).
         to eq Atmosphere::OptimizationStrategy::Default
     end
 
+    it 'default is used when optimization policy specificies undefined class' do
+      appl = Atmosphere::Appliance.new(optimization_policy: 'undefined')
+      expect(appl.optimization_strategy.class).
+        to eq Atmosphere::OptimizationStrategy::Default
+    end
+
     context 'optimization policy defined for appliance set' do
+      let(:as) { Atmosphere::ApplianceSet.new(optimization_policy: :manual) }
       it 'is used when appliance does not define optimization strategy' do
-        as = Atmosphere::ApplianceSet.new(optimization_policy: :manual)
         appl = Atmosphere::Appliance.new(appliance_set: as)
         expect(appl.optimization_strategy.class).
           to eq Atmosphere::OptimizationStrategy::Manual
       end
 
       context 'policy defined for appliance' do
-        it 'uses AS strategy when not defined in appliance' do
-          pending 'someone left this spec empty - setting it as pending'
-          fail
+        it 'uses strategy defined in appl' do
+          appl = Atmosphere::Appliance.new(
+            appliance_set: as,
+            optimization_policy: :default
+          )
+          expect(appl.optimization_strategy.class).
+            to eq Atmosphere::OptimizationStrategy::Default
         end
       end
     end
 
     context 'policy defined only for appliance' do
-      pending
+      it 'uses policy defined in appl' do
+        as = Atmosphere::ApplianceSet.new(optimization_policy: nil)
+        appl = Atmosphere::Appliance.new(
+          appliance_set: as,
+          optimization_policy: :manual
+        )
+        expect(appl.optimization_strategy.class).
+          to eq Atmosphere::OptimizationStrategy::Manual
+      end
     end
   end
 
@@ -133,45 +164,6 @@ describe Atmosphere::Appliance do
     end
   end
 
-  context 'when instantiated' do
-    let!(:appliance_type) { create(:appliance_type) }
-    let!(:appliance_set) { create(:appliance_set) }
-    let!(:appliance) do
-      create(:appliance,
-             appliance_set: appliance_set,
-             appliance_type: appliance_type,
-             fund: nil)
-    end
-
-    it 'does not change fund when externally assigned' do
-      funded_appliance = create(:appliance)
-      expect(funded_appliance.fund).not_to eq appliance.send(:default_fund)
-    end
-
-    it 'gets default fund from its user if no fund is set' do
-      expect(appliance.fund).to eq appliance.send(:default_fund)
-    end
-
-    it 'prefers default fund if it supports relevant tenant' do
-      default_t = create(:openstack_with_flavors,
-                         funds: [appliance_set.user.default_fund])
-      funded_t = create(:openstack_with_flavors, funds: [create(:fund)])
-      appliance_set.user.funds << funded_t.funds.first
-      create(:virtual_machine_template,
-             appliance_type: appliance_type,
-             tenants: [default_t])
-      create(:virtual_machine_template,
-             appliance_type: appliance_type,
-             tenants: [funded_t])
-      supported_appliance_types = Atmosphere::Tenant.all.map do |t|
-        t.virtual_machine_templates.map(&:appliance_type)
-      end
-      expect(supported_appliance_types).to all(include(appliance_type))
-      expect(appliance.fund).not_to eq funded_t.funds.first
-      expect(appliance.fund).to eq appliance.send(:default_fund)
-    end
-  end
-
   context '#user_data' do
     let(:appl) do
       build(:appliance).tap do |appl|
@@ -191,41 +183,6 @@ describe Atmosphere::Appliance do
     appl = create(:appliance, appliance_set: as)
 
     expect(appl.owned_by?(user)).to be_truthy
-  end
-
-  context '#default_fund' do
-    let(:appliance) { create(:appliance) }
-
-    it 'provides appliance user default fund' do
-      expect(appliance.send(:default_fund)).
-        to eq appliance.appliance_set.user.default_fund
-    end
-
-    it 'does not crash when no data is present' do
-      appliance.appliance_set.user = nil
-      expect(appliance.send(:default_fund)).to eq nil
-    end
-  end
-
-  context '#assign_fund' do
-    it 'does not assign a fund which is incompatible with selected tenants' do
-      f1 = create(:fund)
-      f2 = create(:fund)
-      t1 = create(:tenant, funds: [f1])
-      t2 = create(:tenant, funds: [f2])
-      u = create(:user, funds: [f1, f2])
-      vmt = create(:virtual_machine_template, tenants: [t1, t2])
-      at = create(:appliance_type, virtual_machine_templates: [vmt])
-      as = create(:appliance_set, user: u)
-
-      t1_a = create(:appliance, appliance_set: as, appliance_type: at,
-                                fund: nil, tenants: [t1])
-      t2_a = create(:appliance, appliance_set: as, appliance_type: at,
-                                fund: nil, tenants: [t2])
-
-      expect(t1_a.fund).to eq f1
-      expect(t2_a.fund).to eq f2
-    end
   end
 
   it 'deletes linking table records but not tenants when destroyed' do

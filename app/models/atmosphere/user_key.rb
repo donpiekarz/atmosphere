@@ -16,6 +16,8 @@ require 'tempfile'
 module Atmosphere
   class UserKey < ActiveRecord::Base
     FINGER_PRINT_RE = /([\d\h]{2}:)+[\d\h]{2}/
+    RSA_PUBLIC_KEY_RE = /ssh-rsa .+$/
+    SANITIZED_KEY_VALUE = 'SANITIZED! Provided key was not ssh-rsa type!'
 
     has_many :appliances,
              class_name: 'Atmosphere::Appliance'
@@ -37,11 +39,19 @@ module Atmosphere
 
     attr_readonly :name, :public_key, :fingerprint
 
+    before_validation :sanitize_public_key, if: :public_key?
+
     before_destroy :disallow_if_used_in_running_vm
     before_destroy :delete_in_clouds
 
     def id_at_site
       "#{user.login}-#{Digest::SHA1.hexdigest(fingerprint)}"
+    end
+
+    def sanitize_public_key
+      self[:public_key] =
+        public_key.try(:match, RSA_PUBLIC_KEY_RE).try(:[], 0) ||
+        SANITIZED_KEY_VALUE
     end
 
     def generate_fingerprint
@@ -52,10 +62,10 @@ module Atmosphere
         file.puts(public_key)
         file.rewind
         output = nil
-        IO.popen("ssh-keygen -lf #{file.path}") {|out|
+        IO.popen(['ssh-keygen', '-lf', file.path]) do |out|
           output = out.read
           logger.info "Output #{output}"
-        }
+        end
         if output.include? 'is not a public key file'
           logger.error "Provided public key #{public_key} is invalid"
           errors.add(:public_key, 'is invalid')

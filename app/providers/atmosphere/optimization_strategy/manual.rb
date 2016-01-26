@@ -18,9 +18,13 @@ module Atmosphere
       def new_vms_tmpls_and_flavors_and_tenants
         tmpls_and_flavors_and_tenants = []
         tmpls = vmt_candidates
-        appliance.optimization_policy_params['vms'].each do |vm|
+        requested_vms = appliance.try(:optimization_policy_params).
+                        try(:[], 'vms') || []
+        requested_vms.each do |vm|
           options = { cpu: vm['cpu'], memory: vm['mem'] }
-          tmpls_and_flavors_and_tenants += Default.select_tmpls_and_flavors_and_tenants(tmpls, @appliance, options)
+          tmpls_and_flavors_and_tenants +=
+            Default.
+            select_tmpls_and_flavors_and_tenants(tmpls, @appliance, options)
         end
         tmpls_and_flavors_and_tenants
       end
@@ -40,6 +44,10 @@ module Atmosphere
            tenant: source_vm.tenant,
            flavor: source_vm.virtual_machine_flavor,
            name: source_vm.name }] * quantity
+      end
+
+      def self.supports?(as)
+        as.production?
       end
     end
   end

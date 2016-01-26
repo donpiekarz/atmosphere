@@ -50,9 +50,26 @@ class Atmosphere::Api::V1::AppliancesController < Atmosphere::Api::ApplicationCo
   def action
     return reboot if reboot_action?
     return scale if scale_action?
-    # place for other optimizer...
+    return pause if pause_action?
+    return stop if stop_action?
+    return suspend if suspend_action?
+    return start if start_action?
+    # place for other actions...
 
     render_json_error('Action not found', status: :bad_request)
+  rescue Excon::Errors::Conflict => e
+    begin
+      body = JSON.parse(e.response.data[:body])
+    rescue JSON::ParserError
+      body = {}
+    end
+
+    conflicting = body.fetch('conflictingRequest',
+                             'message' => 'Conflict', 'code' => 409)
+
+    render_json_error(conflicting['message'],
+                      status: conflicting['code'],
+                      type: :conflict)
   end
 
   private
@@ -87,12 +104,48 @@ class Atmosphere::Api::V1::AppliancesController < Atmosphere::Api::ApplicationCo
     render json: {}, status: 200
   end
 
+  def pause
+    @appliance.virtual_machines.each(&:pause)
+    render json: {}, status: 200
+  end
+
+  def stop
+    @appliance.virtual_machines.each(&:stop)
+    render json: {}, status: 200
+  end
+
+  def suspend
+    @appliance.virtual_machines.each(&:suspend)
+    render json: {}, status: 200
+  end
+
+  def start
+    @appliance.virtual_machines.each(&:start)
+    render json: {}, status: 200
+  end
+
   def reboot_action?
     params.key? :reboot
   end
 
   def scale_action?
     params.key?(:scale)
+  end
+
+  def pause_action?
+    params.key?(:pause)
+  end
+
+  def stop_action?
+    params.key?(:stop)
+  end
+
+  def suspend_action?
+    params.key?(:suspend)
+  end
+
+  def start_action?
+    params.key?(:start)
   end
 
   def filter
